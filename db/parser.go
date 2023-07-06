@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Query struct {
+type ParsedQuery struct {
 	Type              string
 	Key               string
 	Value             string
@@ -37,17 +37,15 @@ const (
 var reservedWords = []string{"SET", "GET", "EX", "NX", "XX"}
 
 type Parser struct {
-	i               int
-	queryTokens     []string
-	queryString     string
-	step            step
-	Query           *Query
-	err             error
-	nextUpdateField string
+	i           int
+	queryTokens []string
+	queryString string
+	step        step
+	Query       *ParsedQuery
 }
 
-func ParseCommand(queryStr string) (*Query, error) {
-	query := Query{}
+func ParseCommand(queryStr string) (*ParsedQuery, error) {
+	query := ParsedQuery{}
 	parser := Parser{
 		queryString: queryStr,
 		Query:       &query,
@@ -59,7 +57,7 @@ func ParseCommand(queryStr string) (*Query, error) {
 	return parsedQuery, nil
 }
 
-func (p *Parser) Parse() (*Query, error) {
+func (p *Parser) Parse() (*ParsedQuery, error) {
 
 	if p.queryString == "" {
 		return nil, fmt.Errorf("query is empty")
@@ -98,6 +96,7 @@ func (p *Parser) Parse() (*Query, error) {
 			default:
 				return nil, fmt.Errorf("invalid command")
 			}
+
 		case stepSetKeyName:
 			if p.peek() == "" {
 				return nil, fmt.Errorf("key and value needed")
@@ -133,6 +132,7 @@ func (p *Parser) Parse() (*Query, error) {
 			}
 
 			p.pop()
+
 		case stepExpiry:
 			if p.peek() == "" {
 				return nil, fmt.Errorf("expiry time is needed")
@@ -210,9 +210,6 @@ func (p *Parser) Parse() (*Query, error) {
 			return p.Query, nil
 
 		case stepQPop:
-			if p.i != len(p.queryTokens)-1 {
-				return nil, fmt.Errorf("syntax error, expected: QPOP key_name")
-			}
 			if p.peek() == "" {
 				return nil, fmt.Errorf("list name and values needed")
 			}
@@ -225,7 +222,7 @@ func (p *Parser) Parse() (*Query, error) {
 			return p.Query, nil
 
 		case stepBQPop:
-			if p.i != len(p.queryTokens)-2 && p.peek() == "" {
+			if p.peek() == "" {
 				return nil, fmt.Errorf("list name is required")
 			}
 			for _, rWords := range reservedWords {
@@ -238,7 +235,7 @@ func (p *Parser) Parse() (*Query, error) {
 			p.pop()
 
 		case stepBQPopDelay:
-			if p.i != len(p.queryTokens)-1 && p.peek() == "" {
+			if p.peek() == "" {
 				return nil, fmt.Errorf("mention seconds of delay")
 			}
 			expiryTime, err := strconv.Atoi(p.peek())
@@ -261,8 +258,19 @@ func (p *Parser) pop() {
 }
 
 func (p *Parser) peek() string {
-	if p.i > len(p.queryTokens) {
+	if p.i > len(p.queryTokens)-1 {
 		return ""
 	}
+
+	//Handling whitespaces in between of ParsedQuery
+	//Example - Set key_a    10   EX    20
+	for {
+		if p.queryTokens[p.i] == "" {
+			p.pop()
+		} else {
+			break
+		}
+	}
+
 	return p.queryTokens[p.i]
 }

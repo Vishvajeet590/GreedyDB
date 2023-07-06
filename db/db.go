@@ -3,11 +3,18 @@ package db
 import (
 	"container/heap"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 )
 
+const (
+	SetIfKeyNotExist = iota
+	SetIfKeyExist
+)
+
+var pq = PriorityQueue{}
+
+// DataBlock Used to store Value in map
 type DataBlock struct {
 	value string
 }
@@ -18,19 +25,13 @@ type Datastore struct {
 	List map[string][]string
 }
 
-const (
-	SetIfKeyNotExist = iota
-	SetIfKeyExist    = iota
-)
-
-var pq = PriorityQueue{}
-
+// Store Interface for Datastore
 type Store interface {
-	Set(query *Query) error
-	Get(query *Query) (string, error)
-	QPush(query *Query) error
-	QPop(query *Query) (string, error)
-	BQPop(query *Query) (interface{}, error)
+	Set(query *ParsedQuery) error
+	Get(query *ParsedQuery) (string, error)
+	QPush(query *ParsedQuery) error
+	QPop(query *ParsedQuery) (string, error)
+	BQPop(query *ParsedQuery) (interface{}, error)
 }
 
 func NewDataStore() *Datastore {
@@ -47,20 +48,12 @@ func NewDataStore() *Datastore {
 	return &store
 }
 
-func (ds *Datastore) Set(query *Query) error {
+func (ds *Datastore) Set(query *ParsedQuery) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
 	valueBlock := DataBlock{
 		value: query.Value,
-	}
-
-	//Adding element in PQ for Active expiry after X seconds.
-	if query.Expiry {
-		heap.Push(&pq, &Item{
-			KeyName: query.Key,
-			Expiry:  time.Now().Add(query.ExpiryTime),
-		})
 	}
 
 	switch query.KeyExistCondition {
@@ -71,15 +64,26 @@ func (ds *Datastore) Set(query *Query) error {
 	case SetIfKeyExist:
 		if _, ok := ds.Data[query.Key]; ok {
 			ds.Data[query.Key] = valueBlock
+		} else {
+			return fmt.Errorf("key does not exist hence not SET")
 		}
 	default:
 		ds.Data[query.Key] = valueBlock
 
 	}
+
+	//Adding element in PQ for Active expiry after X seconds.
+	if query.Expiry {
+		heap.Push(&pq, &Item{
+			KeyName: query.Key,
+			Expiry:  time.Now().Add(query.ExpiryTime),
+		})
+	}
+
 	return nil
 }
 
-func (ds *Datastore) Get(query *Query) (string, error) {
+func (ds *Datastore) Get(query *ParsedQuery) (string, error) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
 	data, ok := ds.Data[query.Key]
@@ -90,7 +94,7 @@ func (ds *Datastore) Get(query *Query) (string, error) {
 	return data.value, nil
 }
 
-func (ds *Datastore) QPush(query *Query) error {
+func (ds *Datastore) QPush(query *ParsedQuery) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
@@ -108,7 +112,7 @@ func (ds *Datastore) QPush(query *Query) error {
 	return nil
 }
 
-func (ds *Datastore) QPop(query *Query) (string, error) {
+func (ds *Datastore) QPop(query *ParsedQuery) (string, error) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
 
@@ -125,7 +129,7 @@ func (ds *Datastore) QPop(query *Query) (string, error) {
 	return poppedValue, nil
 }
 
-func (ds *Datastore) BQPop(query *Query) (interface{}, error) {
+func (ds *Datastore) BQPop(query *ParsedQuery) (interface{}, error) {
 	listItem, ok := ds.List[query.ListName]
 	if !ok {
 		return "", fmt.Errorf("key does not exist")
@@ -176,9 +180,10 @@ func (ds *Datastore) ActiveExpiry() {
 
 			//Item Expired so deleting from memory
 			if !time.Now().Before(item.Expiry) {
-				log.Printf("Item %v poped out", item.KeyName)
+				ds.mu.Lock()
 				delete(ds.Data, item.KeyName)
 				heap.Pop(&pq)
+				ds.mu.Unlock()
 			}
 		}
 	}()
