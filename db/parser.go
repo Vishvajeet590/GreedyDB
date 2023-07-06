@@ -16,7 +16,6 @@ type Query struct {
 	KeyExistCondition int
 	ListName          string
 	ListValues        []string
-	qpop              bool
 }
 
 type step int
@@ -31,6 +30,8 @@ const (
 	stepQPushListName
 	stepQPushListValue
 	stepQPop
+	stepBQPop
+	stepBQPopDelay
 )
 
 var reservedWords = []string{"SET", "GET", "EX", "NX", "XX"}
@@ -89,6 +90,11 @@ func (p *Parser) Parse() (*Query, error) {
 				p.Query.Type = "QPOP"
 				p.step = stepQPop
 				p.pop()
+			case "BQPOP":
+				p.Query.Type = "BQPOP"
+				p.step = stepBQPop
+				p.pop()
+
 			default:
 				return nil, fmt.Errorf("invalid command")
 			}
@@ -162,8 +168,8 @@ func (p *Parser) Parse() (*Query, error) {
 			return p.Query, nil
 
 		case stepGetKeyName:
-			if p.peek() == "" {
-				return nil, fmt.Errorf("keyneeded")
+			if p.i != len(p.queryTokens)-2 && p.peek() == "" {
+				return nil, fmt.Errorf("key needed")
 			}
 			for _, rWords := range reservedWords {
 				if rWords == p.peek() {
@@ -216,6 +222,32 @@ func (p *Parser) Parse() (*Query, error) {
 				}
 			}
 			p.Query.ListName = p.peek()
+			return p.Query, nil
+
+		case stepBQPop:
+			if p.i != len(p.queryTokens)-2 && p.peek() == "" {
+				return nil, fmt.Errorf("list name is required")
+			}
+			for _, rWords := range reservedWords {
+				if rWords == p.peek() {
+					return nil, fmt.Errorf("list name cannot be any of the reserved word")
+				}
+			}
+			p.Query.ListName = p.peek()
+			p.step = stepBQPopDelay
+			p.pop()
+
+		case stepBQPopDelay:
+			if p.i != len(p.queryTokens)-1 && p.peek() == "" {
+				return nil, fmt.Errorf("mention seconds of delay")
+			}
+			expiryTime, err := strconv.Atoi(p.peek())
+			if err != nil {
+				return nil, fmt.Errorf("expiry time must in integer")
+			}
+			p.Query.Expiry = true
+			p.Query.ExpiryTime = time.Duration(expiryTime * 1000000000)
+			fmt.Printf("\vEXP = %v", p.Query.ExpiryTime)
 			return p.Query, nil
 		}
 	}

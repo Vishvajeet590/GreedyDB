@@ -38,11 +38,12 @@ func CommandHandler(c *gin.Context) {
 			FormatResponseMessage(nil, http.StatusInternalServerError, err, c)
 			return
 		}
+		c.Status(http.StatusCreated)
 
 	case "GET":
-		value, err := Store.Get(parsedQuery.Key)
+		value, err := Store.Get(parsedQuery)
 		if err != nil {
-			FormatResponseMessage(nil, http.StatusInternalServerError, err, c)
+			FormatResponseMessage(nil, http.StatusNotFound, err, c)
 			return
 		}
 		FormatResponseMessage(value, http.StatusOK, nil, c)
@@ -53,6 +54,7 @@ func CommandHandler(c *gin.Context) {
 			FormatResponseMessage(nil, http.StatusInternalServerError, err, c)
 			return
 		}
+		c.Status(http.StatusCreated)
 	case "QPOP":
 		poppedValue, err := Store.QPop(parsedQuery)
 		if err != nil {
@@ -60,9 +62,22 @@ func CommandHandler(c *gin.Context) {
 			return
 		}
 		FormatResponseMessage(poppedValue, http.StatusOK, nil, c)
+
+	case "BQPOP":
+		poppedValue, err := Store.BQPop(parsedQuery)
+		if err != nil {
+			return
+		}
+		if err != nil {
+			FormatResponseMessage(nil, http.StatusInternalServerError, err, c)
+			return
+		}
+		FormatResponseMessage(poppedValue, http.StatusOK, nil, c)
+
 	}
 }
 
+// FormatResponseMessage utility function
 func FormatResponseMessage(res interface{}, code int, err error, c *gin.Context) {
 	if err != nil {
 		c.JSON(code, &response{

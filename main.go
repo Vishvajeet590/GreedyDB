@@ -7,9 +7,10 @@ import (
 )
 
 var Store db.Store
+var PQ db.PriorityQueue
 
 func main() {
-	router := gin.New()
+	router := gin.Default()
 	router.Use(gin.Recovery())
 	router.Use(cors.Default())
 	router.GET("/execute", CommandHandler)
