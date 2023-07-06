@@ -1,5 +1,7 @@
 # Greedy DB
+![GitHub go.mod Go version](https://img.shields.io/badge/Golang-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white)
 
+## About
 A simple in-memory key-value datastore written in GO, that could be used for cache. It supports Redis-like features.
 
 - SET (with expiry and exist, not exist strategy)
@@ -92,41 +94,44 @@ The above state table can be implemented with a Switch case inside a for loop, l
 
 ```go
 for {
-		if p.i > len(p.queryTokens) {
-			return p.Query, nil
-		}
+	if p.i > len(p.queryTokens) {
+		return p.Query, nil
+	}
 		switch p.step {
-			case stepType:
-						switch strings.ToUpper(p.peek()) {
-						case "SET":
-							p.Query.Type = "SET"
-							p.step = stepSetKeyName
-							p.pop()
-						case "GET":
-							p.Query.Type = "GET"
-							p.step = stepGetKeyName
-							p.pop()
-						default:
-							return nil, fmt.Errorf("invalid command")
-			
-			case stepSetKeyName:
-					//implementation
-					p.step = stepValue
-					p.pop()
-		
-				case stepValue:
-					//implementation
-					//Now we have a choice if we encounter EX or NX/XX token we transition to respective state else 
-					// if no new token is present that means transition to final.
-					if p.peek() != "" && p.peek() == "EX" {
-						p.step = stepExpiry
-					} else if p.peek() != "" && (p.peek() == "NX" || p.peek() == "XX") {
-						p.step = stepExist
-						continue
-					} else {
-						return nil, fmt.Errorf("invalid format")
-					}
-					p.pop()
+	case stepType:
+		switch strings.ToUpper(p.peek()) {
+		case "SET":
+			p.Query.Type = "SET"
+			p.step = stepSetKeyName
+			p.pop()
+		case "GET":
+			p.Query.Type = "GET"
+			p.step = stepGetKeyName
+			p.pop()
+		default:
+			return nil, fmt.Errorf("invalid command")
+
+		case stepSetKeyName:
+			//implementation
+			p.step = stepValue
+			p.pop()
+
+		case stepValue:
+			//implementation
+
+			//Now we have a choice if we encounter EX or NX/XX token we transition to the respective state else
+			// if no new token is present that means the transition to final.
+			if p.peek() != "" && p.peek() == "EX" {
+				p.step = stepExpiry
+			} else if p.peek() != "" && (p.peek() == "NX" || p.peek() == "XX") {
+				p.step = stepExist
+				continue
+			} else {
+				return nil, fmt.Errorf("invalid format")
+			}
+			p.pop()
+		}
+	}
 }
 ```
 
