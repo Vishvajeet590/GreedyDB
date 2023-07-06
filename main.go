@@ -7,7 +7,6 @@ import (
 )
 
 var Store db.Store
-var PQ db.PriorityQueue
 
 func main() {
 	router := gin.Default()
