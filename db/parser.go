@@ -62,6 +62,8 @@ func (p *Parser) Parse() (*ParsedQuery, error) {
 	if p.queryString == "" {
 		return nil, fmt.Errorf("query is empty")
 	}
+
+	//Tokenizing the query ["SET","key_a","HELLO","EX" "10"], to be used ahead.
 	p.queryTokens = strings.Split(p.queryString, " ")
 	p.step = stepType
 
