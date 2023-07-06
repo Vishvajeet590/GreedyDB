@@ -2,7 +2,7 @@
 
 A simple in-memory key-value datastore written in GO, that could be used for cache. It supports Redis-like features.
 
-- SET (with expiry and exist, not exist startegy)
+- SET (with expiry and exist, not exist strategy)
 - GET
 - QPUSH
 - QPOP
@@ -16,7 +16,7 @@ The service is currently active, you can try it live on
 [https://greedydb.onrender.com/execute](https://greedydb.onrender.com/execute) with body as
 ```json
 {
-	"command" : "SET key_a Hello"
+	"command": "SET key_a Hello"
 }
 ```
 #### Run using Docker Image
@@ -33,9 +33,9 @@ go build -o main
 
 
 ### Handling key Expiry
-Another interesting task was how we handle the key expiry, we could have just done simple if check each time a GET query is made on the key and deleted if the time has elapsed. But it leads to a problem.
+Another interesting task was how we handle the key expiry, we could have just done a simple check each time a GET query is made on the key and deleted if the time has elapsed. But it leads to a problem.
 
-Suppose if we SET 10 million keys and don’t access them, these 10 mil records are stored inside on our memory forever even though the time of expiry has lapsed.
+Suppose we SET 10 million keys and don’t access them, these 10 mil records are stored inside our memory forever even though the time of expiry has lapsed.
 
 To solve this we can have an Active Key Deletion method which is very easy to implement. We can have a priority key with the expiry time as a priority, so at any given moment we will have the key which has to expire in the coming time before any other key in datastore.
 
@@ -50,7 +50,7 @@ I took this as an opportunity to write a small query parser. It is a very simple
 example: “SET key_a Hello EX 10” It will be tokenized  []strings{”SET”, “key_a”, “Hello”, “EX”, “10”}
 - **Syntactic Analysis-** In this phase, the parser looks at the tokens starting from the 0th index i.e. currently “SET” and decides what is the next possible it should get.
 
-Now let's look at what we will get at the end of the parser, It is a ParsedQuery struct that holds all the possible values within the valid query scope.
+Now let's look at what we will get at the end of the parser, It is a ParsedQuery struct that holds all the possible values within the valid query scope. After parsing the query we will get this struct which we will use in further execution.
 
 ```go
 type ParsedQuery struct {
