@@ -35,16 +35,15 @@ go build -o main
 
 
 ### Handling key Expiry
-Another interesting task was how we handle the key expiry, we could have just done a simple check each time a GET query is made on the key and deleted if the time has elapsed. But it leads to a problem.
+Another interesting task was how we handle the key expiry, we could have just done a simple check each time a GET query is made on the key and delete if the time has elapsed. But it leads to a problem.
 
 Suppose we SET 10 million keys and don’t access them, these 10 mil records are stored inside our memory forever even though the time of expiry has lapsed.
 
-To solve this we can have an Active Key Deletion method which is very easy to implement. We can have a priority key with the expiry time as a priority, so at any given moment we will have the key which has to expire in the coming time before any other key in datastore.
+To solve this we can have an Active Key Deletion method which is very easy to implement. We can have a priority queue with the expiry time as a priority, so at any given moment we will have the key which has to expire in the coming time before any other key in datastore.
 
 ![image](https://github.com/Vishvajeet590/GreedyDB/assets/42716731/5a136d34-897c-45cb-a360-d155acdc8f23)
 
 
-Now we run 
 
 ### Parser
 I took this as an opportunity to write a small query parser. It is a very simple LL1 parser, which is left to right predictive parser. LL1 parser has two phases 
