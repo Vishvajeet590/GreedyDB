@@ -34,7 +34,7 @@ go build -o main
 ```
 
 
-### Handling key Expiry
+## Handling key Expiry
 Another interesting task was how we handle the key expiry, we could have just done a simple check each time a GET query is made on the key and delete if the time has elapsed. But it leads to a problem.
 
 Suppose we SET 10 million keys and don’t access them, these 10 mil records are stored inside our memory forever even though the time of expiry has lapsed. We have a dead black of memory.
@@ -49,7 +49,7 @@ In this way, we ensure that we have deleted the expired key at the exact moment 
 
 
 
-### Parser
+## Parser
 I took this as an opportunity to write a small query parser. It is a very simple LL1 parser, which is left to right predictive parser. LL1 parser has two phases 
 - **Tokenizer -** It extracts every word i.e “tokens" ****from the query into an array 
 example: “SET key_a Hello EX 10” It will be tokenized  []strings{”SET”, “key_a”, “Hello”, “EX”, “10”}
