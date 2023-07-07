@@ -37,9 +37,12 @@ go build -o main
 ### Handling key Expiry
 Another interesting task was how we handle the key expiry, we could have just done a simple check each time a GET query is made on the key and delete if the time has elapsed. But it leads to a problem.
 
-Suppose we SET 10 million keys and don’t access them, these 10 mil records are stored inside our memory forever even though the time of expiry has lapsed.
+Suppose we SET 10 million keys and don’t access them, these 10 mil records are stored inside our memory forever even though the time of expiry has lapsed. We have a dead black of memory.
 
-To solve this we can have an Active Key Deletion method which is very easy to implement. We can have a priority queue with the expiry time as a priority, so at any given moment we will have the key which has to expire in the coming time before any other key in datastore.
+To solve this we can have an Active Key Deletion method which is very easy to implement. We can use a priority queue with the expiry time as a priority, so at any given moment we will have the key which has to expire in the nearest coming time at the top of the heap.
+
+On the SET query along with expiry, EX let's say 10 sec, we push the **key_name** along with **expiry time** i.e ```go time.Now().Add(10*time.Second)``` into the priority queue. And we can a start separate go routine which will **peek at the top of PQ** and check if time.Now() > exp (exp is the epoch time at which the key will expire). when this condition is true we use the key in the item to delete it from the map and then the item is popped out of the heap. 
+In this way, we ensure that we have deleted the expired key at the exact moment they expire.
 
 ![image](https://github.com/Vishvajeet590/GreedyDB/assets/42716731/5a136d34-897c-45cb-a360-d155acdc8f23)
 
@@ -136,8 +139,7 @@ for {
 
 You will notice two functions **Peek()** and **********Pop()********** getting used extensively. As LL1 is a protective parser, while it is in the state it looks i.e. peek in the tokens slice for the next coming token and makes the decision according to if the next token is EX then we move to step **stepExpiry** by making **step = stepSetKeyName** which is checked by switch case.
 
-a separate go routine which will peek at the top of PQ and check if time.Now() > exp (exp is epoch time at which key will expire). when this condition is true we use the key in item to delete it from map and then item is popped out of heap. 
-By this way we ensure that we have deleted the expired key at the exact moment they expire.
+
 
 
 ## Commands 
