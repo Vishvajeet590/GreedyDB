@@ -44,6 +44,7 @@ To solve this we can have an Active Key Deletion method which is very easy to im
 On the SET query along with expiry, EX let's say 10 sec, we push the **key_name** along with **expiry time** i.e ```go time.Now().Add(10*time.Second)``` into the priority queue. And we can a start separate go routine which will **peek at the top of PQ** and check if time.Now() > exp (exp is the epoch time at which the key will expire). when this condition is true we use the key in the item to delete it from the map and then the item is popped out of the heap. 
 In this way, we ensure that we have deleted the expired key at the exact moment they expire.
 
+
 ![image](https://github.com/Vishvajeet590/GreedyDB/assets/42716731/5a136d34-897c-45cb-a360-d155acdc8f23)
 
 
